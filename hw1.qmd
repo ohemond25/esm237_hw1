@@ -1,0 +1,190 @@
+---
+title: "Maine Climate Trends"
+author: "Natalie Smith and Liv Hemond"
+date: 2025-04-11
+format: html
+editor: visual
+---
+
+# Introduction
+
+## Research Questions
+
+Are the winters getting warmer in Maine?
+Is snowfall decreasing? 
+Are extreme rainfall events increase in size or frequency?
+Is the hottest day of the year getting hotter? 
+
+# Methods
+
+## Read in data
+
+```{r}
+library(tidyverse)
+library(here)
+library(kableExtra)
+library(lubridate)
+library(Kendall)
+```
+
+```{r}
+climate <- read_csv(here("data", "ncei_cdo_bangor_ME.csv")) %>% 
+  janitor::clean_names() %>% 
+  mutate(year = year(date)) %>%
+  # remove the year 2025 since it's incomplete
+  filter(year!= 2025)
+```
+## Exploratory
+
+```{r}
+ggplot(climate, aes(date, tmax)) + 
+  geom_line() + 
+  labs(y="Daily Maximum Temperature (degrees F)", x="Date")
+
+ggplot(climate, aes(date, tmin)) + 
+  geom_line() + 
+  labs(y="Daily Minimum Temperature (degrees F)", x="Date")
+
+ggplot(climate, aes(date, prcp)) + 
+  geom_line() + 
+  labs(y="Daily Rainfall (in)", x="Date")
+
+ggplot(climate, aes(date, snow)) + 
+  geom_line() + 
+  labs(y="Daily Snowfall (in)", x="Date")
+```
+## Clean up the data
+
+```{r}
+# replace NAs with the average of the previous day and following day in the climate dataset.
+climate_clean <- climate %>% 
+  mutate(tmax = ifelse(is.na(tmax), (lag(tmax) + lead(tmax)) / 2, tmax),
+         tmin = ifelse(is.na(tmin), (lag(tmin) + lead(tmin)) / 2, tmin),
+         prcp = ifelse(is.na(prcp), (lag(prcp) + lead(prcp)) / 2, prcp),
+         snow = ifelse(is.na(snow), (lag(snow) + lead(snow)) / 2, snow))
+
+# if NA is in snow column, replace with a 0
+climate_clean <- climate_clean %>% 
+  mutate(snow = ifelse(is.na(snow), 0, snow))
+
+# remove remaining NAs
+climate_clean <- climate_clean %>% 
+  drop_na()
+
+sum(is.na(climate_clean$prcp))
+
+# plot, as above
+ggplot(climate_clean, aes(date, tmax)) + 
+  geom_line() + 
+  labs(y="Daily Maximum Temperature (degrees F)", x="Date")
+```
+
+## Trend Analysis
+```{r}
+# calculate the annual mean temperature, remove duplicate rows so that there's only one row of average values per year
+climate_annual <- climate_clean %>% 
+  mutate(year = year(date)) %>% 
+  group_by(year) %>% 
+  summarise(tmax = mean(tmax, na.rm = TRUE),
+            tmin = mean(tmin, na.rm = TRUE),
+            prcp = sum(prcp, na.rm = TRUE),
+            snow = sum(snow, na.rm = TRUE))
+
+# plot the annual average tmax and the annual average tmin on the same graph
+ggplot(climate_annual, aes(year)) + 
+  geom_line(aes(y = tmax), color = "red") + 
+  geom_line(aes(y = tmin), color = "blue") + 
+  labs(y="Annual Average Temperature (degrees F)", x="Year") 
+```
+
+```{r}
+# now let's put a trend line on this thing
+ggplot(climate_annual, aes(year)) + 
+  geom_line(aes(y = tmax), color = "red") + 
+  geom_line(aes(y = tmin), color = "blue") + 
+  geom_smooth(aes(y = tmax), method = "lm", color = "red", se = FALSE) + 
+  geom_smooth(aes(y = tmin), method = "lm", color = "blue", se = FALSE) + 
+  labs(y="Annual Average Temperature (degrees F)", x="Year")
+```
+
+```{r}
+# let's do a linear regression for tmin over time. then do the same for tmax, snow, and prcp
+summary(lm(tmin ~ year, data = climate_annual))
+# slope is 0.012 F/year, and is not statistically significant
+
+summary(lm(tmax ~ year, data = climate_annual))
+# slope is 0.051 F/year, and is statistically significant
+
+summary(lm(snow ~ year, data = climate_annual))
+# slope is -0.376 in/year, and is statistically significant
+
+summary(lm(prcp ~ year, data = climate_annual))
+# slope is 0.025 in/year, and is not statistically significant
+```
+
+```{r}
+# now let's do a Mann-Kendall test for tmax, tmin, snow, and prcp
+# tmax
+MannKendall(climate_annual$tmax)
+# tau = 0.458, 2-sided pvalue =< 2.22e-16. moderately strong positive trend, statistically significant
+
+# tmin
+MannKendall(climate_annual$tmin)
+# tau = 0.0771, 2-sided pvalue =0.34068. weak positive trend, not statistically significant
+
+# snow
+MannKendall(climate_annual$snow)
+# tau = -0.201, 2-sided pvalue =0.012806. weak negative trend, statistically significant
+
+# prcp
+MannKendall(climate_annual$prcp)
+# tau = 0.063, 2-sided pvalue =0.43668. weak positive trend, not statistically significant
+```
+### Seasons
+
+```{r}
+# we want to focus on winter
+# winter months are December, January, and February
+# create a new column for the month, filter for winter months, then calculate seasonal averages and means for each year, as we did above
+climate_winter <- climate_clean %>% 
+  mutate(month = month(date)) %>% 
+  filter(month == 12 | month == 1 | month == 2) %>%
+  mutate(season_year = year(date) + if_else(month == 12, 1, 0)) %>% 
+  group_by(season_year) %>%
+  summarize(tmax = mean(tmax, na.rm = TRUE),
+            tmin = mean(tmin, na.rm = TRUE),
+            prcp = sum(prcp, na.rm = TRUE),
+            snow = sum(snow, na.rm = TRUE))
+
+# plot the winter average tmax and the winter average tmin on the same graph
+ggplot(climate_winter, aes(season_year)) + 
+  geom_line(aes(y = tmax), color = "red") + 
+  geom_line(aes(y = tmin), color = "blue") + 
+  geom_smooth(aes(y = tmax), method = "lm", color = "red", se = FALSE) +
+  geom_smooth(aes(y = tmin), method = "lm", color = "blue", se = FALSE) +
+  labs(y="Winter Average Temperature (degrees F)", x="Year")
+
+# plot the winter snowfall over time
+ggplot(climate_winter, aes(season_year)) + 
+  geom_line(aes(y = snow), color = "blue") + 
+  geom_smooth(aes(y = snow), method = "lm", color = "blue", se = FALSE) +
+  labs(y="Winter Snowfall (in)", x="Year")
+```
+
+```{r}
+# linear regression for tmax, tmin, and snow over time, similar to above
+summary(lm(tmax ~ season_year, data = climate_winter))
+# slope is 0.051 F/year, and is statistically significant
+summary(lm(tmin ~ season_year, data = climate_winter))
+# slope is 0.032 F/year, and is not statistically significant
+summary(lm(snow ~ season_year, data = climate_winter))
+# slope is -0.223 in/year, and is statistically significant
+```
+
+
+## Extremes
+
+
+# Results
+
+# Discussion 
