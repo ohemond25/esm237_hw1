@@ -86,7 +86,7 @@ ggplot(climate, aes(date, snow)) +
   labs(y="Daily Snowfall (in)", x="Date")
 ```
 
-After running some exploratory plots and examining the data more closely, we found approximately 300 missing values. Where possible, we filled these NAs using the average of the preceding and following days. For large stretches of missing snow values during the summer months—when we assumed there was no snow—we replaced the NAs with zeros. Any remaining NAs that couldn't be reasonably filled were dropped from the dataset.
+After creating some exploratory plots and examining the data more closely, we found approximately 300 missing values. Where possible, we filled these NAs using the average of the preceding and following days. For large stretches of missing snow values during the summer months—when we assumed there was no snow—we replaced the NAs with zeros. Any remaining NAs that couldn't be reasonably filled were dropped from the dataset.
 
 ```{r}
 #| message: false
