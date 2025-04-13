@@ -1,7 +1,8 @@
 ---
 title: "Maine Climate Trends"
+subtitle: "Analyzing snowfall, precipitation, and temperature changes in Maine"
 author: "Natalie Smith and Liv Hemond"
-date: 2025-04-11
+date: 2025-04-13
 format: 
   html:
     code-fold: true
@@ -16,15 +17,55 @@ execute:
   warning: false
 ---
 
-# Introduction --\> LIV
+![Bigleaf lupine, a common flowering plant in Maine. Author's own photo.](pictures/maine_lupine.jpg){fig-align="center"}
+
+# Introduction
+
+With classically cold, snowy winters, vibrant colorful falls, and sunshine-filled summers, Maine attracts vacationers and outdoor enthusiasts in every season. With only a few urban areas, Maine is predominantly rural and known for its rugged coastline and vast, undeveloped stretches of wilderness. Accordingly, the state's economic stability largely depends upon its many natural resource industries, such as forestry, fishing, and outdoor recreation. 
+
+However, Maine is already feeling the impacts of climate change, including warmer, shorter winters, increased flooding, more severe storms, and coastal sea level rise. These hazards are affecting the state's characteristic ecosystems and the livelihoods of its people in myriad ways. For example, the state's iconic lobster fishery is already experiencing shifts in species distribution and abundance due to warming waters. Additionally, the state's forests are at risk from invasive species and pests that thrive in warmer temperatures.
+
+::: {#fig-seasons layout-ncol="2"}
+![Summer](pictures/maine_summer.jpg){fig-align="left"}
+
+![Winter](pictures/maine_winter.JPG){fig-align="right"}
+
+Maine across the seasons. Author's own photos.
+:::
+
+In this analysis, we will explore and quantify the changing climate conditions in Maine. We will focus on the city of Bangor, located in central Maine, as a representative site for climate conditions across the state.
 
 ## Research Questions
 
-Are the winters getting warmer in Maine? Is snowfall decreasing? Are extreme rainfall events increase in size or frequency? Is the hottest day of the year getting hotter?
+With our research, we hope to answer the following questions about climate averages and extremes, using trend analysis:
 
-# Methods
+-   **Annual Averages:**
 
-## Data exploration and cleaning
+    -   How are annual temperatures changing in Maine? 
+    
+    -   How is annual precipitation and snowfall changing?
+    
+-   **Seasonal Averages:**
+
+    -   Are winter temperatures getting warmer in Maine? 
+    
+    -   Is winter snowfall decreasing?
+
+-   **Extremes:**
+
+    -   Are the number of days with freezing temperatures decreasing?
+
+    -   Is the hottest day of the year getting hotter?
+
+    -   Are extreme rainfall events increasing in frequency?
+
+## Data Source
+
+Data was obtained from the National Oceanic and Atmospheric Administration (NOAA) Climate Data Online (CDO) database. We used the "Daily Summaries" dataset for Bangor, Maine, which includes daily maximum and minimum temperatures, daily precipitation, and daily snowfall from 1953 to 2025. The data was downloaded as a CSV file and cleaned and analyzed in R.
+
+# Data Cleaning
+
+Expand any of the code chunks below to see our initial cleaning and exploration of the data. We read in our data, then created exploratory plots to visualize the daily maximum and minimum temperatures, precipitation totals, and rainfall totals over the entire study period. As these plots are noisy, given that the show data for every single day, we created annual and seasonal summaries in the following section to actually visualize and assess trends.
 
 ```{r}
 #| message: false
@@ -48,11 +89,14 @@ precip = "steelblue"
 
 # read in the data and clean names: 
 climate <- read_csv(here("data", "ncei_cdo_bangor_ME.csv")) %>% 
+  
   janitor::clean_names() %>% 
+  
+  # create a 'year' column
   mutate(year = year(date)) %>%
+  
   # remove the year 2025 since it's incomplete
   filter(year!= 2025)
-
 ```
 
 ```{r}
@@ -116,14 +160,14 @@ ggplot(climate_clean, aes(date, tmax)) +
   labs(y="Daily Maximum Temperature (degrees F)", x="Date")
 ```
 
-# Trend Analysis
+# Trends Analysis
 
-## Annual trends
+## Annual Average Trends
 
-We calculated annual climate summaries by averaging daily maximum and minimum temperatures, and summing daily precipitation and snowfall. To assess trends over time, we visualized annual tmax and tmin with line plots and added a line of best fit. We then performed linear regressions and Mann-Kendall tests for tmax, tmin, snowfall, and precipitation to evaluate the strength and significance of the trends.
+We calculated annual climate summaries by averaging daily maximum and minimum temperatures (tmax and tmin, respectively), and summing daily precipitation and snowfall. To assess trends over time, we visualized annual tmax and tmin with line plots and added a line of best fit. We then performed linear regressions and Mann-Kendall tests for tmax, tmin, snowfall, and precipitation to evaluate the strength and significance of the trends.
 
 ```{r}
-# calculate the annual mean temperature, remove duplicate rows so that there's only one row of average values per year
+# calculate the annual mean tmax, tmin, precipitation, and snowfall
 climate_annual <- climate_clean %>% 
   mutate(year = year(date)) %>% 
   group_by(year) %>% 
@@ -136,20 +180,20 @@ climate_annual <- climate_clean %>%
 ### Temperature
 
 ```{r}
-
 # plot the annual average tmax and the annual average tmin on the same graph
-# ggplot(climate_annual, aes(year)) + 
-#   geom_line(aes(y = tmax), color = "red") + 
-#   geom_line(aes(y = tmin), color = "blue") + 
-#   labs(y="Annual Average Temperature (degrees F)", x="Year") 
-
-# now let's put a trend line on this thing
-temp_trend <- ggplot(climate_annual, aes(year)) + 
-  geom_line(aes(y = tmax), color = "darkorange2") + 
-  geom_line(aes(y = tmin), color = "dodgerblue") +
-  geom_smooth(aes(y = tmax), method = "lm", color = "darkorange2", se = FALSE) + 
-  geom_smooth(aes(y = tmin), method = "lm", color = "dodgerblue", se = FALSE) + 
-  labs(y = "Annual Average Temperature (degrees F)", x = "Year") +
+# include linear regression trend line
+temp_trend <- ggplot(climate_annual, aes(x = year)) + 
+  geom_line(aes(y = tmax, color = "Tmax")) + 
+  geom_line(aes(y = tmin, color = "Tmin")) +
+  geom_smooth(aes(y = tmax, color = "Tmax"), method = "lm", se = FALSE) + 
+  geom_smooth(aes(y = tmin, color = "Tmin"), method = "lm", se = FALSE) + 
+  scale_color_manual(
+    name = "",
+    values = c("Tmax" = "darkorange2", "Tmin" = "dodgerblue")
+  ) +
+  labs(title = "Annual Temperature Averages in Bangor, Maine",
+       subtitle = "Trends from 1953 to 2024",
+       y = "Annual Average Temperature (degrees F)", x = "Year") +
   scale_y_continuous(breaks = seq(30, 70, by = 5)) +
   theme_minimal() +
   theme(axis.title.x = element_blank())
@@ -158,12 +202,15 @@ temp_trend
 ```
 
 ### Precipitation and Snowfall
+
 ```{r}
 # Plot for precipitation 
 precip_plot <- ggplot(climate_annual, aes(year)) + 
   geom_line(aes(y = prcp, color = "Precipitation")) + 
   geom_smooth(aes(y = prcp, color = "Precipitation"), method = "lm", se = FALSE) + 
-  labs(y = "Annual Average Precipitation", 
+  labs(title = "Annual Precipitation",
+       subtitle = "Trends from 1953 to 2024",
+       y = "Annual Average Precipitation (inches)", 
        x = "Year") + 
   scale_color_manual(values = c("Precipitation" = "steelblue")) + 
   theme_minimal() +
@@ -174,7 +221,8 @@ precip_plot <- ggplot(climate_annual, aes(year)) +
 snow_plot <- ggplot(climate_annual, aes(year)) + 
   geom_line(aes(y = snow, color = "Snowfall")) + 
   geom_smooth(aes(y = snow, color = "Snowfall"), method = "lm", se = FALSE) + 
-  labs(y = "Annual Average Snowfall", 
+  labs(title = "Annual Snowfall",
+       y = "Annual Average Snowfall (inches)", 
        x = "Year") + 
   scale_color_manual(values = c("Snowfall" = "darkorchid3")) + 
   theme_minimal() +
@@ -232,11 +280,13 @@ MannKendall(climate_annual$snow)
 MannKendall(climate_annual$prcp)
 # tau = 0.063, 2-sided pvalue =0.43668. weak positive trend, not statistically significant
 ```
-### Annual trends results:
+
+### Annual Trends Results
 
 Maximum temperature showed a statistically significant increasing trend over time, with an estimated increase of 0.051°F per year. The Mann-Kendall test confirmed this with a moderately strong, significant upward trend. Minimum temperature had an increase of 0.012°F per year, but this trend was not statistically significant in either test. Snowfall decreased significantly at a rate of 0.376 inches per year, supported by a weak but significant negative trend in the Mann-Kendall test. Precipitation showed a small, non-significant upward trend in both analyses.
 
-## Seasonal Trends
+## Seasonal Average Trends
+
 The annual trends showed us that maximum temperatures are increasing and snowfall is decreasing. To further explore these trends, we focused on seasonal averages for winter months (December, January, February) to see if the patterns hold true.
 
 ```{r}
@@ -257,11 +307,25 @@ climate_winter <- climate_clean %>%
 ```{r}
 # plot the winter average tmax and the winter average tmin on the same graph
 winter_temp_plot <- ggplot(climate_winter, aes(season_year)) + 
-  geom_line(aes(y = tmax), color = "darkorange2") + 
-  geom_line(aes(y = tmin), color = "dodgerblue") + 
-  geom_smooth(aes(y = tmax), method = "lm", color = "darkorange2", se = FALSE) +
-  geom_smooth(aes(y = tmin), method = "lm", color = "dodgerblue", se = FALSE) +
-  labs(y="Winter Average Temperature (degrees F)", x="Year") +
+  geom_line(aes(y = tmax, color = "Tmax")) + 
+  geom_line(aes(y = tmin, color = "Tmin")) + 
+  geom_smooth(aes(y = tmax, color = "Tmax"), method = "lm", se = FALSE) +
+  geom_smooth(aes(y = tmin, color = "Tmin"), method = "lm", se = FALSE) +
+  
+  labs(title = "Winter Temperature Averages in Bangor, Maine",
+       subtitle = "Trends from 1953 to 2024",
+       y="Winter Average Temperature (degrees F)", x="Year") +
+  
+  scale_color_manual(
+    name = "",
+    values = c("Tmax" = "darkorange2", "Tmin" = "dodgerblue")
+  ) +
+  
+  # make breaks for every 10 years on the x axis
+   scale_x_continuous(
+    breaks = seq(1950, 2020, by = 10),
+    labels = seq(1950, 2020, by = 10)
+    ) +
   
   theme_minimal() +
   theme(axis.title.x = element_blank())
@@ -273,20 +337,24 @@ snow_trend_plot <- ggplot(climate_winter, aes(season_year)) +
   geom_line(aes(y = snow), color = "mediumorchid3") + 
   geom_smooth(aes(y = snow), method = "lm", color = "mediumorchid3", se = FALSE) +
   
-  labs(y="Winter Snowfall (in)", x="Year") +
+  labs(title = "Winter Snowfall in Bangor, Maine",
+       subtitle = "Trend from 1953 to 2024",
+       y="Winter Snowfall (inches)", x="Year") +
   
-# make breaks for every 10 years on the x axis
+  # make breaks for every 10 years on the x axis
    scale_x_continuous(
     breaks = seq(1950, 2020, by = 10),
     labels = seq(1950, 2020, by = 10)
-  ) +
+    ) +
   
   theme_minimal() +
   theme(axis.title.x = element_blank())
 
 snow_trend_plot
 ```
-Similar to the previous trend analysis, we applied linear regression to assess the seasonal trends in winter maximum temperature, minimum temperature, and snowfall over time. 
+
+Similar to the previous trend analysis, we applied linear regression to assess the seasonal trends in winter maximum temperature, minimum temperature, and snowfall over time.
+
 ```{r}
 #| message: false
 #| warning: false
@@ -301,13 +369,15 @@ summary(lm(snow ~ season_year, data = climate_winter))
 # slope is -0.223 in/year, and is statistically significant
 ```
 
-### Seasonal trends results:
+### Seasonal Trends Results
+
 The linear regression analysis of winter climate trends showed a statistically significant increase in winter maximum temperature at 0.051°F per year, consistent with the annual trend analysis. The winter minimum temperature showed an increase of 0.032°F per year, but it was not significant. Snowfall decreased significantly at a rate of 0.223 inches per year.
 
-## Extremes
+## Extreme Trends Analysis
+
 To investigate extreme climate events, we used the same dataset to examine key metrics related to climate extremes. Specifically, we focused on the number of freezing days, the hottest day of the year, and the return period for flooding events. Freezing days were defined as any day with a **maximum temperature** of 32°F or lower, in order to focus on daytime temperatures and minimize the influence of cold nights. For flooding events in Maine, we defined a reasonable threshold for daily precipitation as **2 inches per day**.
 
-### Number of freezing days
+### Number of Freezing Days
 
 ```{r}
 # calculate the number of freezing days per year
@@ -322,7 +392,10 @@ freeze_days <- climate_clean %>%
 freezing_plot <- ggplot(freeze_days, aes(year, freeze_days)) + 
   geom_line(color = "dodgerblue") + 
   geom_smooth(method = "lm", color = "dodgerblue", se = FALSE) +
-  labs(y="Number of Freezing Days", x="Year") +
+  
+  labs(title = "Freezing Days in Bangor, Maine",
+       subtitle = "Trend from 1953 to 2024",
+       y="Number of Freezing Days", x="Year") +
   
 # make breaks for every 10 years on the x axis
    scale_x_continuous(
@@ -335,7 +408,8 @@ freezing_plot <- ggplot(freeze_days, aes(year, freeze_days)) +
 
 freezing_plot 
 ```
-### Hottest day of the year
+
+### Hottest Day of the Year
 
 ```{r}
 # calculate hottest day of the year
@@ -347,7 +421,10 @@ hottest_day <- climate_clean %>%
 hot_plot <- ggplot(hottest_day, aes(year, hottest)) + 
   geom_line(color = "darkorange2") + 
   geom_smooth(method = "lm", color = "darkorange2", se = FALSE) +
-  labs(y="Hottest Day of the Year (degrees F)", x="Year")+
+  
+  labs(title = "Hottest Day of the Year in Bangor, Maine",
+       subtitle = "Trend from 1953 to 2024",
+       y="Hottest Day of the Year (degrees F)", x="Year")+
 
 # make breaks for every 10 years on the x axis
    scale_x_continuous(
@@ -361,7 +438,7 @@ hot_plot <- ggplot(hottest_day, aes(year, hottest)) +
 hot_plot 
 ```
 
-### Return period for flooding:
+### Flood Return Period
 
 ```{r}
 # caluclate the return period for flooding events, so if the precipitation is higher then 2 inches a day than it is a 1 and if it is not than it is a 0
@@ -374,8 +451,10 @@ flooding_events <- climate_clean %>%
 flood_plot <- ggplot(flooding_events, aes(year, flood_days)) + 
   geom_line(color = "steelblue") + 
   geom_smooth(method = "lm", color = "steelblue", se = FALSE) +
-  labs(y="Number of Flooding Days (>= 1 inch/day)", x="Year")+
-# make breaks for every 10 years on the x axis
+  labs(title = "Flooding Events in Bangor, Maine",
+       subtitle = "Trend from 1953 to 2024",
+       y="Number of Flooding Days (>= 2 inch/day)", x="Year")+
+   # make breaks for every 10 years on the x axis
    scale_x_continuous(
     breaks = seq(1950, 2020, by = 10),
     labels = seq(1950, 2020, by = 10)
@@ -407,7 +486,13 @@ lm_flood <- lm(flood_days ~ year, data = flooding_events)
 summary(lm_flood)
 # slope is 0.012 and is not statistically significant
 ```
-### Extreme events results: 
+
+### Extreme Events Results
+
 The linear regression analysis for freezing days revealed a significant negative trend, with a decrease of approximately 0.225 days below 32°F per year. In contrast, the analysis for the hottest day of the year showed positive trend of 0.023°F though it was not statistically significant. Similarly, the regression for flooding events indicated an increase of 0.012 flood days per years, but was not statistically significant.
 
 # Discussion
+
+In this analysis, we explored the changing climate conditions in Bangor, Maine, focusing on annual and seasonal trends in temperature, precipitation, and snowfall. We also examined extreme climate events, including freezing days, the hottest day of the year, and flooding events. We found that maximum temperatures are increasing and snowfall is decreasing, both overall at an annual scale and for the winter season specifically. We also found a significant decrease in the number of freezing days, which aligns with the overall conclusion that Maine is warming significantly. 
+
+In summary, the state of Maine is experiencing significant changes in its climate, with implications for its ecosystems and economy. The trends we observed in Bangor are likely representative of broader changes across the state, and they underscore the need for continued monitoring and adaptation to a changing climate. Future analyses could integrate climate data from other regions in Maine to assess spatial variability in these trends and identify priority areas to take action.
