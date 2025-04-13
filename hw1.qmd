@@ -65,7 +65,7 @@ Data was obtained from the National Oceanic and Atmospheric Administration (NOAA
 
 # Data Cleaning
 
-Expand any of the code chunks below to see our initial cleaning and exploration of the data. We read in our data, then created exploratory plots to visualize the daily maximum and minimum temperatures, precipitation totals, and rainfall totals over the entire study period. As these plots are noisy, given that the show data for every single day, we created annual and seasonal summaries in the following section to actually visualize and assess trends.
+Expand any of the code chunks below to see our initial cleaning and exploration of the data. We read in our data, then created exploratory plots to visualize the daily maximum and minimum temperatures, precipitation totals, and rainfall totals over the entire study period. These plots are quite noisy since they display data for every single day. To better visualize and assess trends, we created annual and seasonal summaries in the following section.
 
 ```{r}
 #| message: false
